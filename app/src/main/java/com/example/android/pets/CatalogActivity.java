@@ -15,23 +15,29 @@
  */
 package com.example.android.pets;
 
+import android.app.LoaderManager;
+import android.content.CursorLoader;
 import android.content.Intent;
+import android.content.Loader;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
-import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.TextView;
+import android.widget.ListView;
 
 import com.example.android.pets.data.PetContract;
 
 /**
  * Displays list of pets that were entered and stored in the app.
  */
-public class CatalogActivity extends AppCompatActivity {
+public class CatalogActivity extends AppCompatActivity
+        implements LoaderManager.LoaderCallbacks<Cursor> {
+    PetCursorAdapter petCursorAdapter;
+    ListView petListView;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -46,60 +52,15 @@ public class CatalogActivity extends AppCompatActivity {
                 startActivity(intent);
             }
         });
-    }
 
-    @Override
-    protected void onStart() {
-        super.onStart();
-        displayDatabaseInfo();
-    }
+        petListView = (ListView) findViewById(R.id.list_view_pet);
+        petCursorAdapter = new PetCursorAdapter(this, null);
+        petListView.setAdapter(petCursorAdapter);
 
-    /**
-     * Temporary helper method to display information in the onscreen TextView about the state of
-     * the pets database.
-     */
-    private void displayDatabaseInfo() {
-        // Perform this raw SQL query "SELECT * FROM pets"
-        // to get a Cursor that contains all rows from the pets table.
-        String [] columns = {
-                PetContract.PetEntry._ID,
-                PetContract.PetEntry.COLUMN_NAME,
-                PetContract.PetEntry.COLUMN_BREED,
-                PetContract.PetEntry.COLUMN_GENDER,
-                PetContract.PetEntry.COLUMN_WEIGHT
-        };
-        Cursor cursor = getContentResolver().query(
-                PetContract.PetEntry.CONTENT_URI,
-                columns,
-                null,
-                null,
-                null);
+        View emptyView = findViewById(R.id.empty_view);
+        petListView.setEmptyView(emptyView);
 
-        try {
-            // Display the number of rows in the Cursor (which reflects the number of rows in the
-            // pets table in the database).
-            TextView displayView = (TextView) findViewById(R.id.text_view_pet);
-            String displayText = "Number of rows in pets database table: " + cursor.getCount() + "\n\n";
-
-            displayText += TextUtils.join(" - ", columns) + "\n";
-
-            while (cursor.moveToNext()) {
-                String [] rowValues = {
-                        String.valueOf(cursor.getInt(0)),
-                        cursor.getString(1),
-                        cursor.getString(2),
-                        String.valueOf(cursor.getInt(3)),
-                        String.valueOf(cursor.getInt(4))
-                };
-                displayText += "\n" + TextUtils.join(" - ", rowValues);
-            }
-
-            displayView.setText(displayText);
-        } finally {
-            // Always close the cursor when you're done reading from it. This releases all its
-            // resources and makes it invalid.
-            cursor.close();
-        }
+        getLoaderManager().initLoader(0, null, this);
     }
 
     @Override
@@ -117,11 +78,41 @@ public class CatalogActivity extends AppCompatActivity {
             // Respond to a click on the "Insert dummy data" menu option
             case R.id.action_insert_dummy_data:
                 return true;
+
             // Respond to a click on the "Delete all entries" menu option
             case R.id.action_delete_all_entries:
-                // Do nothing for now
+                getContentResolver().delete(
+                        PetContract.PetEntry.CONTENT_URI,
+                        null, null);
                 return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+        // Perform this raw SQL query "SELECT * FROM pets"
+        // to get a Cursor that contains all rows from the pets table.
+        String [] columns = {
+                PetContract.PetEntry._ID,
+                PetContract.PetEntry.COLUMN_NAME,
+                PetContract.PetEntry.COLUMN_BREED,
+                PetContract.PetEntry.COLUMN_GENDER,
+                PetContract.PetEntry.COLUMN_WEIGHT
+        };
+
+        return new CursorLoader(this,
+                PetContract.PetEntry.CONTENT_URI,
+                columns, null, null, null);
+    }
+
+    @Override
+    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
+        petCursorAdapter.swapCursor(data);
+    }
+
+    @Override
+    public void onLoaderReset(Loader<Cursor> loader) {
+        petCursorAdapter.swapCursor(null);
     }
 }
