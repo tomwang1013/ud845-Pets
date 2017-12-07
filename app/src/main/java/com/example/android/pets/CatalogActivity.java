@@ -16,6 +16,7 @@
 package com.example.android.pets;
 
 import android.app.LoaderManager;
+import android.content.ContentUris;
 import android.content.CursorLoader;
 import android.content.Intent;
 import android.content.Loader;
@@ -26,6 +27,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ListView;
 
 import com.example.android.pets.data.PetContract;
@@ -53,12 +55,21 @@ public class CatalogActivity extends AppCompatActivity
             }
         });
 
-        petListView = (ListView) findViewById(R.id.list_view_pet);
-        petCursorAdapter = new PetCursorAdapter(this, null);
-        petListView.setAdapter(petCursorAdapter);
-
         View emptyView = findViewById(R.id.empty_view);
+
+        petCursorAdapter = new PetCursorAdapter(this, null);
+        petListView = (ListView) findViewById(R.id.list_view_pet);
+
+        petListView.setAdapter(petCursorAdapter);
         petListView.setEmptyView(emptyView);
+        petListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                Intent intent = new Intent(CatalogActivity.this, EditorActivity.class);
+                intent.setData(ContentUris.withAppendedId(PetContract.PetEntry.CONTENT_URI, id));
+                startActivity(intent);
+            }
+        });
 
         getLoaderManager().initLoader(0, null, this);
     }

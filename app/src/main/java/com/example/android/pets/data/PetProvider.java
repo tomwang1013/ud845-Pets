@@ -9,6 +9,8 @@ import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.util.Log;
 
+import java.net.URI;
+
 /**
  * Created by Seeyon on 2017-12-4.
  */
@@ -88,6 +90,8 @@ public class PetProvider extends ContentProvider {
                 throw new IllegalArgumentException("can not query unknown URI: " + uri);
         }
 
+        cursor.setNotificationUri(getContext().getContentResolver(), uri);
+
         return cursor;
     }
 
@@ -119,6 +123,8 @@ public class PetProvider extends ContentProvider {
             return null;
         }
 
+        getContext().getContentResolver().notifyChange(uri, null);
+
         // Once we know the ID of the new row in the table,
         // return the new URI with the ID appended to the end of it
         return ContentUris.withAppendedId(uri, newId);
@@ -129,19 +135,21 @@ public class PetProvider extends ContentProvider {
      */
     @Override
     public int update(Uri uri, ContentValues contentValues, String selection, String[] selectionArgs) {
+        int count;
+
         switch (sUriMatcher.match(uri)) {
             case PETS:
-                return updatePet(contentValues, selection, selectionArgs);
+                return updatePet(uri, contentValues, selection, selectionArgs);
             case PET_ID:
                 selection = PetContract.PetEntry._ID + "=?";
                 selectionArgs = new String[] { String.valueOf(ContentUris.parseId(uri)) };
-                return updatePet(contentValues, selection, selectionArgs);
+                return updatePet(uri, contentValues, selection, selectionArgs);
             default:
                 throw new IllegalArgumentException("Update is not supported for " + uri);
         }
     }
 
-    private int updatePet(ContentValues values, String selection, String[] selectionArgs) {
+    private int updatePet(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
         checkUpdateValues(values);
 
         if (values.size() == 0) {
@@ -149,10 +157,17 @@ public class PetProvider extends ContentProvider {
         }
 
         SQLiteDatabase db = mPetDbHelper.getWritableDatabase();
-        return db.update(PetContract.PetEntry.TABLE_NAME,
+        int updateCount =  db.update(
+                PetContract.PetEntry.TABLE_NAME,
                 values,
                 selection,
                 selectionArgs);
+
+        if (updateCount != 0) {
+            getContext().getContentResolver().notifyChange(uri, null);
+        }
+
+        return updateCount;
     }
 
     /**
@@ -160,16 +175,26 @@ public class PetProvider extends ContentProvider {
      */
     @Override
     public int delete(Uri uri, String selection, String[] selectionArgs) {
+        int delCount;
+
         switch (sUriMatcher.match(uri)) {
             case PETS:
-                return deletePet(selection, selectionArgs);
+                delCount = deletePet(selection, selectionArgs);
+                break;
             case PET_ID:
                 selection = PetContract.PetEntry._ID + "=?";
                 selectionArgs = new String[] { String.valueOf(ContentUris.parseId(uri)) };
-                return deletePet(selection, selectionArgs);
+                delCount = deletePet(selection, selectionArgs);
+                break;
             default:
                 throw new IllegalArgumentException("Update is not supported for " + uri);
         }
+
+        if (delCount != 0) {
+            getContext().getContentResolver().notifyChange(uri, null);
+        }
+
+        return delCount;
     }
 
     private int deletePet(String selection, String[] selectionArgs) {
