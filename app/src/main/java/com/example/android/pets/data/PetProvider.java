@@ -9,8 +9,6 @@ import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.util.Log;
 
-import java.net.URI;
-
 /**
  * Created by Seeyon on 2017-12-4.
  */
